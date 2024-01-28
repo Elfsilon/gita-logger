@@ -59,7 +59,8 @@ func (c *Context) Format(e Event) string {
 	var formatted strings.Builder
 
 	if c.displayID {
-		formatted.WriteString("#" + fmt.Sprint(e.ID) + " ")
+		id := fmt.Sprintf("#%d", e.ID)
+		formatted.WriteString(id + " ")
 	}
 
 	if c.displayTime {

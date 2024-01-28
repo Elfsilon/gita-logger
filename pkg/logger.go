@@ -64,8 +64,6 @@ func (l *Logger) createLogFilesAt(dir string) error {
 	t := time.Now().Format("2006-01-02-15:04:05.000")
 	path := fmt.Sprintf("%v/log_%v.log", dir, t)
 
-	l.Info(path)
-
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, fs.ModePerm)
 	if err != nil {
 		return err
