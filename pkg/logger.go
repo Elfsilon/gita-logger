@@ -9,20 +9,39 @@ import (
 )
 
 type Logger struct {
+	ctx   *Context
 	Out   io.Writer
 	Err   io.Writer
 	file  *os.File
 	level Level
-	ctx   *Context
 }
 
-func NewLogger() *Logger {
-	return &Logger{
-		ctx:   NewContext(true),
-		Out:   os.Stdout,
-		Err:   os.Stderr,
-		level: InfoLevel,
+func NewLogger(config *Config) *Logger {
+	if config.Out == nil {
+		config.Out = os.Stdout
 	}
+
+	if config.Err == nil {
+		config.Err = os.Stdout
+	}
+
+	l := &Logger{
+		ctx: NewContext(
+			config.DisplayStackTrace,
+			config.DisplayID,
+			config.DisplayTime,
+			config.DisplayFileAndLine,
+		),
+		Out:   config.Out,
+		Err:   config.Err,
+		level: config.Level,
+	}
+
+	if config.LogsDir != "" {
+		l.createLogFilesAt(config.LogsDir)
+	}
+
+	return l
 }
 
 func (l *Logger) SetOut(out io.Writer) {
@@ -37,11 +56,7 @@ func (l *Logger) SetLevel(level Level) {
 	l.level = level
 }
 
-func (l *Logger) HideStackTrace() {
-	l.ctx = NewContext(false)
-}
-
-func (l *Logger) CreateLogFilesAt(dir string) error {
+func (l *Logger) createLogFilesAt(dir string) error {
 	if err := os.MkdirAll(dir, fs.ModePerm); err != nil {
 		return err
 	}
@@ -68,26 +83,20 @@ func (l *Logger) Destroy() error {
 	return nil
 }
 
-func (l *Logger) log(message string, level Level) error {
+func (l *Logger) log(message string, level Level, depth int) error {
 	if level < l.level {
 		return nil
 	}
 
-	event := l.ctx.NewEventFromMessage(message)
-	formattedEvent := event.format(level)
+	event := l.ctx.NewEventFromMessage(message, level, depth+1)
+	formatted := l.ctx.Format(event) + string('\n')
 
-	return l.write(formattedEvent)
-}
-
-func (l *Logger) write(message string) error {
-	mes := message + string('\n')
-
-	if _, err := io.WriteString(l.Out, mes); err != nil {
+	if err := l.write_out(formatted); err != nil {
 		return err
 	}
 
 	if l.file != nil {
-		if _, err := io.WriteString(l.file, mes); err != nil {
+		if err := l.write_file(formatted); err != nil {
 			return err
 		}
 	}
@@ -95,24 +104,40 @@ func (l *Logger) write(message string) error {
 	return nil
 }
 
+func (l *Logger) write_out(message string) error {
+	if _, err := io.WriteString(l.Out, message); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Logger) write_file(message string) error {
+	if _, err := io.WriteString(l.file, message); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (l *Logger) Log(message string) error {
-	return l.log(message, InfoLevel)
+	return l.log(message, InfoLevel, INITIAL_CALL_DEPTH)
 }
 
 func (l *Logger) Info(message string) error {
-	return l.log(message, InfoLevel)
+	return l.log(message, InfoLevel, INITIAL_CALL_DEPTH)
 }
 
 func (l *Logger) Warning(message string) error {
-	return l.log(message, WarningLevel)
+	return l.log(message, WarningLevel, INITIAL_CALL_DEPTH)
 }
 
 func (l *Logger) Error(message string) error {
-	return l.log(message, ErrorLevel)
+	return l.log(message, ErrorLevel, INITIAL_CALL_DEPTH)
 }
 
 func (l *Logger) Fatal(message string) error {
-	if err := l.log(message, FatalLevel); err != nil {
+	if err := l.log(message, FatalLevel, INITIAL_CALL_DEPTH); err != nil {
 		return err
 	}
 	panic(message)
