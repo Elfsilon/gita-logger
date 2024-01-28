@@ -18,7 +18,7 @@ type Logger struct {
 
 func NewLogger() *Logger {
 	return &Logger{
-		ctx:   NewContext(),
+		ctx:   NewContext(true),
 		Out:   os.Stdout,
 		Err:   os.Stderr,
 		level: InfoLevel,
@@ -35,6 +35,10 @@ func (l *Logger) SetErr(err io.Writer) {
 
 func (l *Logger) SetLevel(level Level) {
 	l.level = level
+}
+
+func (l *Logger) HideStackTrace() {
+	l.ctx = NewContext(false)
 }
 
 func (l *Logger) CreateLogFilesAt(dir string) error {
@@ -108,5 +112,8 @@ func (l *Logger) Error(message string) error {
 }
 
 func (l *Logger) Fatal(message string) error {
-	return l.log(message, FatalLevel)
+	if err := l.log(message, FatalLevel); err != nil {
+		return err
+	}
+	panic(message)
 }
