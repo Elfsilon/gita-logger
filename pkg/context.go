@@ -40,16 +40,16 @@ func (c *Context) NewEventFromMessage(message string, level Level, depth int) Ev
 	filename := path.Base(file)
 
 	event := Event{
-		id:        c.eventsCount,
-		message:   message,
-		timestamp: time.Now(),
-		filename:  filename,
-		line:      line,
-		level:     level,
+		ID:        c.eventsCount,
+		Message:   message,
+		Timestamp: time.Now(),
+		Filename:  filename,
+		Line:      line,
+		Level:     level,
 	}
 
-	if c.attachStackTrace {
-		event.stackTrace = string(debug.Stack())
+	if c.attachStackTrace && level >= ErrorLevel {
+		event.StackTrace = string(debug.Stack())
 	}
 
 	return event
@@ -59,27 +59,27 @@ func (c *Context) Format(e Event) string {
 	var formatted strings.Builder
 
 	if c.displayID {
-		formatted.WriteString("#" + fmt.Sprint(e.id) + " ")
+		formatted.WriteString("#" + fmt.Sprint(e.ID) + " ")
 	}
 
 	if c.displayTime {
-		t := e.timestamp.Format("15:01:02")
+		t := e.Timestamp.Format("15:01:02")
 		formatted.WriteString(t + " ")
 	}
 
-	coloredLevelName := c.col.ColoredLevel(labels[e.level], e.level)
+	coloredLevelName := c.col.ColoredLevel(labels[e.Level], e.Level)
 	formatted.WriteString("[" + coloredLevelName + "] ")
 
 	if c.displayFileAndLine {
-		fileAndLine := fmt.Sprintf("%s:%d", e.filename, e.line)
-		coloredFileAndLine := c.col.ColoredLevel(fileAndLine, e.level)
+		fileAndLine := fmt.Sprintf("%s:%d", e.Filename, e.Line)
+		coloredFileAndLine := c.col.ColoredLevel(fileAndLine, e.Level)
 		formatted.WriteString("(" + coloredFileAndLine + ") ")
 	}
 
-	formatted.WriteString(e.message)
+	formatted.WriteString(e.Message)
 
-	if e.stackTrace != "" && e.level >= ErrorLevel {
-		coloredStack := c.col.ColoredLevel("StackTrace: "+e.stackTrace, ErrorLevel)
+	if e.StackTrace != "" {
+		coloredStack := c.col.ColoredLevel("StackTrace: "+e.StackTrace, ErrorLevel)
 		formatted.WriteString("\n" + coloredStack)
 	}
 

@@ -61,8 +61,8 @@ func (l *Logger) createLogFilesAt(dir string) error {
 		return err
 	}
 
-	t := time.Now().Format("2006-01-02-15:04:05.000000")
-	path := fmt.Sprintf("%v/log_%v.txt", dir, t)
+	t := time.Now().Format("2006-01-02-15:04:05.000")
+	path := fmt.Sprintf("%v/log_%v.log", dir, t)
 
 	l.Info(path)
 
@@ -89,14 +89,14 @@ func (l *Logger) log(message string, level Level, depth int) error {
 	}
 
 	event := l.ctx.NewEventFromMessage(message, level, depth+1)
-	formatted := l.ctx.Format(event) + string('\n')
+	formatted := l.ctx.Format(event)
 
 	if err := l.write_out(formatted); err != nil {
 		return err
 	}
 
 	if l.file != nil {
-		if err := l.write_file(formatted); err != nil {
+		if err := l.write_file(event.String()); err != nil {
 			return err
 		}
 	}
@@ -105,7 +105,7 @@ func (l *Logger) log(message string, level Level, depth int) error {
 }
 
 func (l *Logger) write_out(message string) error {
-	if _, err := io.WriteString(l.Out, message); err != nil {
+	if _, err := io.WriteString(l.Out, message+string('\n')); err != nil {
 		return err
 	}
 
@@ -113,7 +113,7 @@ func (l *Logger) write_out(message string) error {
 }
 
 func (l *Logger) write_file(message string) error {
-	if _, err := io.WriteString(l.file, message); err != nil {
+	if _, err := io.WriteString(l.file, message+string('\n')); err != nil {
 		return err
 	}
 
