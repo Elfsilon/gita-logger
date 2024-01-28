@@ -8,17 +8,17 @@ import (
 	"time"
 )
 
-type Event struct{}
-
 type Logger struct {
 	Out   io.Writer
 	Err   io.Writer
 	file  *os.File
 	level Level
+	ctx   *Context
 }
 
 func NewLogger() *Logger {
 	return &Logger{
+		ctx:   NewContext(),
 		Out:   os.Stdout,
 		Err:   os.Stderr,
 		level: InfoLevel,
@@ -68,9 +68,11 @@ func (l *Logger) log(message string, level Level) error {
 	if level < l.level {
 		return nil
 	}
-	/// TODO: remove sprintf
-	temp := fmt.Sprintf("[%v] %v", labels[level], message)
-	return l.write(temp)
+
+	event := l.ctx.NewEventFromMessage(message)
+	formattedEvent := event.format(level)
+
+	return l.write(formattedEvent)
 }
 
 func (l *Logger) write(message string) error {
