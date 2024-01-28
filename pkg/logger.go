@@ -3,7 +3,9 @@ package gita
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"time"
 )
 
 type Event struct{}
@@ -11,32 +13,80 @@ type Event struct{}
 type Logger struct {
 	Out   io.Writer
 	Err   io.Writer
+	file  *os.File
 	level Level
 }
 
-func NewLogger(level Level) *Logger {
+func NewLogger() *Logger {
 	return &Logger{
 		Out:   os.Stdout,
 		Err:   os.Stderr,
-		level: level,
+		level: InfoLevel,
 	}
+}
+
+func (l *Logger) SetOut(out io.Writer) {
+	l.Out = out
+}
+
+func (l *Logger) SetErr(err io.Writer) {
+	l.Err = err
+}
+
+func (l *Logger) SetLevel(level Level) {
+	l.level = level
+}
+
+func (l *Logger) CreateLogFilesAt(dir string) error {
+	if err := os.MkdirAll(dir, fs.ModePerm); err != nil {
+		return err
+	}
+
+	t := time.Now().Format("2006-01-02-15:04:05.000000")
+	path := fmt.Sprintf("%v/log_%v.txt", dir, t)
+
+	l.Info(path)
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, fs.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	l.file = file
+	return nil
+}
+
+func (l *Logger) Destroy() error {
+	if l.file != nil {
+		return l.file.Close()
+	}
+
+	return nil
 }
 
 func (l *Logger) log(message string, level Level) error {
 	if level < l.level {
 		return nil
 	}
+	/// TODO: remove sprintf
 	temp := fmt.Sprintf("[%v] %v", labels[level], message)
 	return l.write(temp)
 }
 
 func (l *Logger) write(message string) error {
-	_, err := io.WriteString(l.Out, message+string('\n'))
-	return err
-}
+	mes := message + string('\n')
 
-func (l *Logger) SetLevel(level Level) {
-	l.level = level
+	if _, err := io.WriteString(l.Out, mes); err != nil {
+		return err
+	}
+
+	if l.file != nil {
+		if _, err := io.WriteString(l.file, mes); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (l *Logger) Log(message string) error {
