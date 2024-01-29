@@ -124,8 +124,8 @@ func (l *Logger) Destroy() error {
 	return nil
 }
 
-func (l *Logger) Log(message string) error {
-	return l.log(message, InfoLevel, INITIAL_CALL_DEPTH)
+func (l *Logger) Log(level Level, message string) error {
+	return l.log(message, level, INITIAL_CALL_DEPTH)
 }
 
 func (l *Logger) Info(message string) error {
@@ -141,6 +141,30 @@ func (l *Logger) Error(message string) error {
 }
 
 func (l *Logger) Fatal(message string) error {
+	if err := l.log(message, FatalLevel, INITIAL_CALL_DEPTH); err != nil {
+		return err
+	}
+	panic(message)
+}
+
+func (l *Logger) Logf(level Level, format string, a ...any) error {
+	return l.log(fmt.Sprintf(format, a...), level, INITIAL_CALL_DEPTH)
+}
+
+func (l *Logger) Infof(format string, a ...any) error {
+	return l.log(fmt.Sprintf(format, a...), InfoLevel, INITIAL_CALL_DEPTH)
+}
+
+func (l *Logger) Warningf(format string, a ...any) error {
+	return l.log(fmt.Sprintf(format, a...), WarningLevel, INITIAL_CALL_DEPTH)
+}
+
+func (l *Logger) Errorf(format string, a ...any) error {
+	return l.log(fmt.Sprintf(format, a...), ErrorLevel, INITIAL_CALL_DEPTH)
+}
+
+func (l *Logger) Fatalf(format string, a ...any) error {
+	message := fmt.Sprintf(format, a...)
 	if err := l.log(message, FatalLevel, INITIAL_CALL_DEPTH); err != nil {
 		return err
 	}
