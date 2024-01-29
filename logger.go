@@ -3,21 +3,22 @@ package gita
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
-	"time"
 )
 
 type Logger struct {
 	level     Level
-	ctx       *Context
 	Out       io.Writer
 	Err       io.Writer
-	file      *os.File
+	ctx       *Context
 	formatter *Formatter
 }
 
 func NewLogger(config *Config) *Logger {
+	if config == nil {
+		config = &Config{}
+	}
+
 	if config.Out == nil {
 		config.Out = os.Stdout
 	}
@@ -37,10 +38,6 @@ func NewLogger(config *Config) *Logger {
 		Err:       config.Err,
 		level:     config.Level,
 		formatter: formatter,
-	}
-
-	if config.LogsDir != "" {
-		l.createLogFilesAt(config.LogsDir)
 	}
 
 	return l
@@ -74,51 +71,12 @@ func (l *Logger) log(message string, level Level, depth int) error {
 		return err
 	}
 
-	if l.file != nil {
-		if err := l.write_file(event.String()); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
 func (l *Logger) write_out(message string) error {
 	if _, err := io.WriteString(l.Out, message+string('\n')); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (l *Logger) write_file(message string) error {
-	if _, err := io.WriteString(l.file, message+string('\n')); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (l *Logger) createLogFilesAt(dir string) error {
-	if err := os.MkdirAll(dir, fs.ModePerm); err != nil {
-		return err
-	}
-
-	t := time.Now().Format("2006-01-02-15:04:05.000")
-	path := fmt.Sprintf("%v/log_%v.log", dir, t)
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, fs.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	l.file = file
-	return nil
-}
-
-func (l *Logger) Destroy() error {
-	if l.file != nil {
-		return l.file.Close()
 	}
 
 	return nil
