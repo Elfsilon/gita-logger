@@ -9,11 +9,12 @@ import (
 )
 
 type Logger struct {
-	ctx   *Context
-	Out   io.Writer
-	Err   io.Writer
-	file  *os.File
-	level Level
+	level     Level
+	ctx       *Context
+	Out       io.Writer
+	Err       io.Writer
+	file      *os.File
+	formatter *Formatter
 }
 
 func NewLogger(config *Config) *Logger {
@@ -25,16 +26,17 @@ func NewLogger(config *Config) *Logger {
 		config.Err = os.Stdout
 	}
 
+	formatter := NewDefaultFormatter()
+	if config.Format != nil {
+		formatter.merge(config.Format)
+	}
+
 	l := &Logger{
-		ctx: NewContext(
-			config.DisplayStackTrace,
-			config.DisplayID,
-			config.DisplayTime,
-			config.DisplayFileAndLine,
-		),
-		Out:   config.Out,
-		Err:   config.Err,
-		level: config.Level,
+		ctx:       NewContext(),
+		Out:       config.Out,
+		Err:       config.Err,
+		level:     config.Level,
+		formatter: formatter,
 	}
 
 	if config.LogsDir != "" {
@@ -56,29 +58,8 @@ func (l *Logger) SetLevel(level Level) {
 	l.level = level
 }
 
-func (l *Logger) createLogFilesAt(dir string) error {
-	if err := os.MkdirAll(dir, fs.ModePerm); err != nil {
-		return err
-	}
-
-	t := time.Now().Format("2006-01-02-15:04:05.000")
-	path := fmt.Sprintf("%v/log_%v.log", dir, t)
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, fs.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	l.file = file
-	return nil
-}
-
-func (l *Logger) Destroy() error {
-	if l.file != nil {
-		return l.file.Close()
-	}
-
-	return nil
+func (l *Logger) SetFormatter(formatter *Formatter) {
+	l.formatter = formatter
 }
 
 func (l *Logger) log(message string, level Level, depth int) error {
@@ -86,8 +67,8 @@ func (l *Logger) log(message string, level Level, depth int) error {
 		return nil
 	}
 
-	event := l.ctx.NewEventFromMessage(message, level, depth+1)
-	formatted := l.ctx.Format(event)
+	event := l.ctx.NewEventFromMessage(message, level, l.formatter.DisplayStackTrace, depth+1)
+	formatted := l.formatter.Format(event)
 
 	if err := l.write_out(formatted); err != nil {
 		return err
@@ -113,6 +94,31 @@ func (l *Logger) write_out(message string) error {
 func (l *Logger) write_file(message string) error {
 	if _, err := io.WriteString(l.file, message+string('\n')); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (l *Logger) createLogFilesAt(dir string) error {
+	if err := os.MkdirAll(dir, fs.ModePerm); err != nil {
+		return err
+	}
+
+	t := time.Now().Format("2006-01-02-15:04:05.000")
+	path := fmt.Sprintf("%v/log_%v.log", dir, t)
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, fs.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	l.file = file
+	return nil
+}
+
+func (l *Logger) Destroy() error {
+	if l.file != nil {
+		return l.file.Close()
 	}
 
 	return nil

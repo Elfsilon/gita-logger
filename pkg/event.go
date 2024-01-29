@@ -19,7 +19,7 @@ func (e *Event) String() string {
 	res := fmt.Sprintf("#%d %s [%s] (%s:%d) %s",
 		e.ID,
 		e.Timestamp.Format("15:01:02"),
-		labels[e.Level],
+		levelNames[e.Level],
 		e.Filename,
 		e.Line,
 		e.Message,

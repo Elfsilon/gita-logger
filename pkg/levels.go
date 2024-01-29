@@ -12,7 +12,7 @@ const (
 	FatalLevel
 )
 
-var labels = []string{
+var levelNames = []string{
 	"INFO",
 	"WARNING",
 	"ERROR",
@@ -22,7 +22,7 @@ var labels = []string{
 type Level = int
 
 func ParseLevel(name string) (int, error) {
-	for i, n := range labels {
+	for i, n := range levelNames {
 		if name == strings.ToLower(n) {
 			return i, nil
 		}
