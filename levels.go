@@ -23,7 +23,7 @@ type Level = int
 
 func ParseLevel(name string) (int, error) {
 	for i, n := range levelNames {
-		if name == strings.ToLower(n) {
+		if strings.EqualFold(name, n) {
 			return i, nil
 		}
 	}
